@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实验室危化品安全管家 · 管理后台</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --ink: #2C2C2A;
+    --ink-2: #444441;
+    --gray: #888780;
+    --line: rgba(44,44,42,0.12);
+    --bg: #F5F4F0;
+    --orange: #D85A30;
+    --orange-soft: rgba(216,90,48,0.08);
+    --green: #3B6D11;
+    --green-soft: rgba(59,109,17,0.10);
+    --amber: #BA7517;
+    --amber-soft: rgba(186,117,23,0.10);
+    --red: #A32D2D;
+    --red-soft: rgba(163,45,45,0.10);
+  }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- 登录 ---------- */
+  #login {
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    transition: opacity .45s ease, visibility .45s;
+  }
+  #login.hidden { opacity: 0; visibility: hidden; }
+  .login-mark { width: 64px; height: 64px; margin-bottom: 22px; }
+  .login-title { color: #fff; font-size: 26px; font-weight: 700; letter-spacing: 2px; }
+  .login-sub { color: var(--gray); font-size: 13px; margin-top: 8px; letter-spacing: 3px; }
+  .login-card {
+    width: 360px; margin-top: 34px; padding: 28px 26px 24px;
+    background: rgba(245,244,240,0.06);
+    border: 1px solid rgba(245,244,240,0.14);
+    border-radius: 12px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .login-card label { font-size: 13px; color: #B4B2A9; letter-spacing: 1px; }
+  .login-card input {
+    width: 100%; padding: 13px 14px; font-size: 15px; letter-spacing: 3px;
+    background: rgba(0,0,0,0.28); border: 1px solid rgba(245,244,240,0.2);
+    border-radius: 8px; color: #fff; outline: none;
+    font-family: inherit;
+    transition: border-color .2s;
+  }
+  .login-card input:focus { border-color: var(--orange); }
+  .login-card button {
+    margin-top: 6px; padding: 13px; font-size: 15px; font-weight: 700; letter-spacing: 4px;
+    background: var(--orange); color: #fff; border: none; border-radius: 8px;
+    cursor: pointer; font-family: inherit;
+    transition: filter .2s, transform .1s;
+  }
+  .login-card button:hover { filter: brightness(1.08); }
+  .login-card button:active { transform: translateY(1px); }
+  .login-err { font-size: 12px; color: #F09595; height: 16px; letter-spacing: 1px; }
+  .login-hint { margin-top: 18px; font-size: 12px; color: #5F5E5A; letter-spacing: 1px; }
+  .shake { animation: shake .35s; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+  }
+
+  /* ---------- 布局 ---------- */
+  #app { display: none; min-height: 100vh; }
+  #app.show { display: flex; }
+  aside {
+    width: 236px; flex: 0 0 236px; background: var(--ink); color: #F5F4F0;
+    display: flex; flex-direction: column; padding: 26px 0 20px;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .brand { padding: 0 22px 22px; border-bottom: 1px solid rgba(245,244,240,0.1); }
+  .brand h1 { font-size: 16px; font-weight: 700; letter-spacing: 1px; line-height: 1.5; }
+  .brand p { font-size: 11px; color: var(--gray); margin-top: 6px; letter-spacing: 2px; }
+  nav { padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; border-radius: 8px;
+    color: #B4B2A9; font-size: 14px; text-decoration: none; cursor: pointer;
+    transition: background .18s, color .18s;
+  }
+  nav a:hover { background: rgba(245,244,240,0.06); color: #F5F4F0; }
+  nav a.active { background: var(--orange); color: #fff; font-weight: 700; }
+  nav a .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .7; }
+  .side-foot { padding: 0 22px; font-size: 11px; color: #5F5E5A; line-height: 1.8; }
+
+  main { flex: 1; min-width: 0; padding: 24px 30px 40px; }
+  header.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 16px; border-bottom: 1px solid var(--line); margin-bottom: 22px;
+  }
+  .topbar h2 { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+  .topbar .meta { display: flex; align-items: center; gap: 18px; font-size: 13px; color: var(--gray); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 12px; border-radius: 999px; font-size: 12px;
+    background: var(--green-soft); color: var(--green); font-weight: 700;
+  }
+  .chip .pulse {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(59,109,17,0.5); }
+    70% { box-shadow: 0 0 0 7px rgba(59,109,17,0); }
+    100% { box-shadow: 0 0 0 0 rgba(59,109,17,0); }
+  }
+
+  .view { display: none; }
+  .view.active { display: block; animation: fadeUp .3s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- 卡片 ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .kpi {
+    background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 20px; position: relative; overflow: hidden;
+  }
+  .kpi::after {
+    content: ""; position: absolute; left: 0; top: 0; width: 4px; height: 100%;
+    background: var(--orange);
+  }
+  .kpi .label { font-size: 13px; color: var(--gray); }
+  .kpi .val { font-size: 34px; font-weight: 700; line-height: 1.2; margin-top: 6px; }
+  .kpi .val small { font-size: 14px; font-weight: 400; color: var(--gray); margin-left: 4px; }
+  .kpi .foot { font-size: 12px; color: var(--gray); margin-top: 4px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; margin-top: 14px; }
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .card h3 {
+    font-size: 15px; font-weight: 700; letter-spacing: .5px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .card h3 span.sub { font-size: 12px; font-weight: 400; color: var(--gray); }
+
+  .env-row { display: flex; gap: 22px; }
+  .env-item { flex: 1; }
+  .env-item .k { font-size: 12px; color: var(--gray); }
+  .env-item .v { font-size: 26px; font-weight: 700; margin-top: 2px; }
+  .env-item .v em { font-size: 12px; font-style: normal; color: var(--gray); margin-left: 3px; }
+  .spark { width: 100%; height: 58px; margin-top: 12px; display: block; }
+  .env-note {
+    margin-top: 10px; padding: 9px 12px; border-radius: 6px;
+    background: var(--green-soft); color: var(--green); font-size: 12px;
+  }
+
+  .alert-list { display: flex; flex-direction: column; gap: 10px; }
+  .alert {
+    display: flex; gap: 12px; padding: 12px 14px; border-radius: 8px;
+    background: #FAFAF7; border: 1px solid var(--line);
+  }
+  .alert.high { background: var(--red-soft); border-color: rgba(163,45,45,0.25); }
+  .alert.mid { background: var(--amber-soft); border-color: rgba(186,117,23,0.25); }
+  .alert .lv {
+    flex: 0 0 auto; font-size: 11px; font-weight: 700; padding: 3px 8px;
+    border-radius: 4px; height: 20px; line-height: 14px;
+  }
+  .alert.high .lv { background: var(--red); color: #fff; }
+  .alert.mid .lv { background: var(--amber); color: #fff; }
+  .alert.low .lv { background: var(--gray); color: #fff; }
+  .alert .body { flex: 1; min-width: 0; }
+  .alert .t { font-size: 14px; font-weight: 700; }
+  .alert .d { font-size: 12px; color: var(--gray); margin-top: 3px; line-height: 1.6; }
+  .alert .act {
+    align-self: center; font-size: 12px; color: var(--orange); cursor: pointer;
+    border: 1px solid rgba(216,90,48,0.4); padding: 5px 10px; border-radius: 6px;
+    background: #fff; white-space: nowrap;
+  }
+  .alert .act.done { color: var(--gray); border-color: var(--line); cursor: default; background: transparent; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left; font-size: 12px; font-weight: 700; color: #fff;
+    background: var(--ink); padding: 11px 12px; white-space: nowrap;
+  }
+  thead th:first-child { border-radius: 8px 0 0 0; }
+  thead th:last-child { border-radius: 0 8px 0 0; }
+  tbody td { padding: 11px 12px; border-bottom: 1px solid var(--line); }
+  tbody tr:hover { background: #FAFAF7; }
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px;
+    border-radius: 999px; white-space: nowrap;
+  }
+  .tag.ok { background: var(--green-soft); color: var(--green); }
+  .tag.out { background: var(--amber-soft); color: var(--amber); }
+  .tag.bad { background: var(--red-soft); color: var(--red); }
+  .tag.ai { background: var(--orange-soft); color: var(--orange); }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .toolbar input, .toolbar select {
+    padding: 9px 12px; font-size: 13px; font-family: inherit;
+    border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink);
+    outline: none;
+  }
+  .toolbar input { flex: 1; max-width: 300px; }
+  .toolbar input:focus, .toolbar select:focus { border-color: var(--orange); }
+  .toolbar .count { font-size: 12px; color: var(--gray); margin-left: auto; }
+
+  .cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .cell {
+    background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; position: relative;
+  }
+  .cell .no {
+    position: absolute; right: 12px; top: 12px;
+    font-size: 11px; color: var(--gray); font-weight: 700;
+  }
+  .cell .nm { font-size: 14px; font-weight: 700; padding-right: 30px; }
+  .cell .sp { font-size: 11px; color: var(--gray); margin-top: 3px; }
+  .bar { height: 6px; border-radius: 999px; background: #EAE8E2; margin-top: 12px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 999px; background: var(--green); }
+  .cell.low .bar i { background: var(--amber); }
+  .cell.empty .bar i { background: var(--red); }
+  .cell.empty { background: #FAFAF7; }
+  .cell .qty { display: flex; justify-content: space-between; font-size: 11px; color: var(--gray); margin-top: 6px; }
+  .cell .flag {
+    margin-top: 10px; font-size: 11px; font-weight: 700;
+  }
+  .cell .flag.g { color: var(--green); }
+  .cell .flag.a { color: var(--amber); }
+  .cell .flag.r { color: var(--red); }
+
+  .kv { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 24px; font-size: 13px; }
+  .kv div { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px dashed var(--line); }
+  .kv span:first-child { color: var(--gray); }
+  .kv span:last-child { font-weight: 700; }
+
+  footer.pagefoot {
+    margin-top: 26px; padding-top: 12px; border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--gray); display: flex; justify-content: space-between;
+  }
+  @media (max-width: 1080px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .cells { grid-template-columns: repeat(2, 1fr); }
+    aside { width: 190px; flex-basis: 190px; }
+    main { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <svg class="login-mark" viewBox="0 0 64 64" fill="none">
+    <rect x="8" y="12" width="48" height="42" rx="4" stroke="#D85A30" stroke-width="2.5"/>
+    <line x1="8" y1="26" x2="56" y2="26" stroke="#D85A30" stroke-width="2.5"/>
+    <line x1="8" y1="40" x2="56" y2="40" stroke="#D85A30" stroke-width="2.5"/>
+    <rect x="26" y="30" width="6" height="6" rx="1" fill="#D85A30"/>
+    <path d="M32 6v6M24 9v3M40 9v3" stroke="#D85A30" stroke-width="2.5" stroke-linecap="round"/>
+  </svg>
+  <div class="login-title">实验室危化品安全管家</div>
+  <div class="login-sub">AI + 物联网 · 管理后台</div>
+  <div class="login-card">
+    <label for="pwd">管理员密码</label>
+    <input id="pwd" type="password" placeholder="请输入密码" autocomplete="off">
+    <div class="login-err" id="loginErr"></div>
+    <button id="loginBtn">登 录</button>
+  </div>
+  <div class="login-hint">演示环境 · 密码 123456</div>
+</div>
+
+<div id="app">
+  <aside>
+    <div class="brand">
+      <h1>危化品安全管家</h1>
+      <p>MANAGEMENT CONSOLE</p>
+    </div>
+    <nav>
+      <a class="active" data-view="overview"><span class="dot"></span>总览</a>
+      <a data-view="ledger"><span class="dot"></span>电子台账</a>
+      <a data-view="alerts"><span class="dot"></span>告警中心<span id="navAlertBadge" style="margin-left:auto;background:#D85A30;color:#fff;font-size:11px;padding:1px 7px;border-radius:999px;">2</span></a>
+      <a data-view="cells"><span class="dot"></span>柜格库存</a>
+      <a data-view="device"><span class="dot"></span>设备状态</a>
+    </nav>
+    <div class="side-foot">
+      管理员：叶俊城<br>
+      实验室 A-201<br>
+      演示数据 · 前端模拟
+    </div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <h2 id="viewTitle">总览</h2>
+      <div class="meta">
+        <span class="chip"><span class="pulse"></span>柜体在线</span>
+        <span id="clock">--:--:--</span>
+      </div>
+    </header>
+
+    <!-- 总览 -->
+    <section class="view active" id="view-overview">
+      <div class="kpis">
+        <div class="kpi">
+          <div class="label">今日取用次数</div>
+          <div class="val" id="kpiUse">12<small>次</small></div>
+          <div class="foot">较昨日 +3 次 · 均已完成 AI 复核</div>
+        </div>
+        <div class="kpi">
+          <div class="label">在库试剂</div>
+          <div class="val" id="kpiStock">48<small>瓶</small></div>
+          <div class="foot">柜格占用 11 / 12</div>
+        </div>
+        <div class="kpi">
+          <div class="label">未处理告警</div>
+          <div class="val" style="color:#D85A30" id="kpiAlert">2<small>条</small></div>
+          <div class="foot">含 1 条高危 · 已在柜门侧阻断</div>
+        </div>
+        <div class="kpi">
+          <div class="label">库存预警</div>
+          <div class="val" style="color:#BA7517" id="kpiWarn">4<small>格</small></div>
+          <div class="foot">低于 30% 余量或已空</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>环境实时监测 <span class="sub">每 2 秒刷新</span></h3>
+          <div class="env-row">
+            <div class="env-item">
+              <div class="k">柜内温度</div>
+              <div class="v" id="envTemp">22.4<em>℃</em></div>
+            </div>
+            <div class="env-item">
+              <div class="k">相对湿度</div>
+              <div class="v" id="envHum">45<em>%RH</em></div>
+            </div>
+            <div class="env-item">
+              <div class="k">VOC 浓度</div>
+              <div class="v" id="envVoc">0.12<em>ppm</em></div>
+            </div>
+          </div>
+          <svg class="spark" id="spark" viewBox="0 0 600 58" preserveAspectRatio="none">
+            <polyline id="sparkLine" fill="none" stroke="#3B6D11" stroke-width="2" points=""></polyline>
+            <polyline id="sparkArea" fill="rgba(59,109,17,0.10)" stroke="none" points=""></polyline>
+          </svg>
+          <div class="env-note" id="envNote">温湿度与 VOC 均在安全阈值内 · 未触发通风联动</div>
+        </div>
+
+        <div class="card">
+          <h3>告警速览 <span class="sub">近 24 小时</span></h3>
+          <div class="alert-list" id="alertMini"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3>最近取用 <span class="sub">电子台账同步</span></h3>
+        <table>
+          <thead>
+            <tr><th>时间</th><th>操作人</th><th>试剂</th><th>取用量</th><th>用途</th><th>验证</th><th>状态</th></tr>
+          </thead>
+          <tbody id="recentBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 电子台账 -->
+    <section class="view" id="view-ledger">
+      <div class="toolbar">
+        <input id="searchInput" placeholder="搜索试剂 / 操作人 / 用途">
+        <select id="filterStatus">
+          <option value="all">全部状态</option>
+          <option value="out">未归还</option>
+          <option value="ok">已归还</option>
+          <option value="bad">违规</option>
+        </select>
+        <span class="count" id="ledgerCount"></span>
+      </div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr><th>时间</th><th>操作人</th><th>试剂</th><th>取用量</th><th>用途 / 实验</th><th>验证方式</th><th>状态</th></tr>
+          </thead>
+          <tbody id="ledgerBody"></tbody>
+        </table>
+      </div>
+      <footer class="pagefoot">
+        <span>记录由柜体边缘端自动生成，不可手工修改</span>
+        <span>共 14 条 · 演示数据</span>
+      </footer>
+    </section>
+
+    <!-- 告警中心 -->
+    <section class="view" id="view-alerts">
+      <div class="card">
+        <h3>告警列表 <span class="sub">点击「标记已处理」可关闭告警</span></h3>
+        <div class="alert-list" id="alertFull"></div>
+      </div>
+      <footer class="pagefoot">
+        <span>高危告警已联动柜门锁定，需管理员现场复位</span>
+        <span>共 4 条 · 演示数据</span>
+      </footer>
+    </section>
+
+    <!-- 柜格库存 -->
+    <section class="view" id="view-cells">
+      <div class="card">
+        <h3>柜格实时状态 <span class="sub">A 柜 · 3 层 × 4 格</span></h3>
+        <div class="cells" id="cellsGrid"></div>
+      </div>
+      <footer class="pagefoot">
+        <span>余量由取用记录与称重传感器交叉校验</span>
+        <span>低库存自动提醒采购 · 演示数据</span>
+      </footer>
+    </section>
+
+    <!-- 设备状态 -->
+    <section class="view" id="view-device">
+      <div class="grid-2" style="margin-top:0">
+        <div class="card">
+          <h3>柜体与网络</h3>
+          <div class="kv">
+            <div><span>设备编号</span><span>A-201-CAB-01</span></div>
+            <div><span>固件版本</span><span>v1.3.2</span></div>
+            <div><span>网络状态</span><span style="color:#3B6D11">MQTT 已连接</span></div>
+            <div><span>边缘端负载</span><span>42%</span></div>
+            <div><span>柜门状态</span><span>已锁定</span></div>
+            <div><span>电磁锁</span><span style="color:#3B6D11">正常</span></div>
+            <div><span>上次校准</span><span>3 天前</span></div>
+            <div><span>连续运行</span><span>128 天</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>传感器与识别模型</h3>
+          <div class="kv">
+            <div><span>摄像头</span><span style="color:#3B6D11">在线</span></div>
+            <div><span>RFID 读写器</span><span style="color:#3B6D11">在线</span></div>
+            <div><span>温湿度传感器</span><span style="color:#3B6D11">在线</span></div>
+            <div><span>VOC 传感器</span><span style="color:#3B6D11">在线</span></div>
+            <div><span>模型版本</span><span>YOLO-v8n / 自训练</span></div>
+            <div><span>识别准确率</span><span>96.2%</span></div>
+            <div><span>平均推理耗时</span><span>178 ms</span></div>
+            <div><span>今日识别帧数</span><span id="deviceFrames">31,204</span></div>
+          </div>
+        </div>
+      </div>
+      <footer class="pagefoot">
+        <span>断网时边缘端本地自治，恢复后自动补传事件</span>
+        <span>演示数据</span>
+      </footer>
+    </section>
+  </main>
+</div>
+
+<script>
+  var PASS = "123456";
+  var loginEl = document.getElementById("login");
+  var appEl = document.getElementById("app");
+  var pwdEl = document.getElementById("pwd");
+  var errEl = document.getElementById("loginErr");
+
+  function doLogin() {
+    if (pwdEl.value === PASS) {
+      loginEl.classList.add("hidden");
+      appEl.classList.add("show");
+      try { sessionStorage.setItem("whg_logged", "1"); } catch (e) {}
+      startClocks();
+    } else {
+      errEl.textContent = "密码不正确，请重新输入";
+      pwdEl.classList.add("shake");
+      setTimeout(function () { pwdEl.classList.remove("shake"); }, 400);
+      pwdEl.value = "";
+      pwdEl.focus();
+    }
+  }
+  document.getElementById("loginBtn").addEventListener("click", doLogin);
+  pwdEl.addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
+
+  try {
+    if (sessionStorage.getItem("whg_logged") === "1") {
+      loginEl.classList.add("hidden");
+      appEl.classList.add("show");
+      startClocks();
+    }
+  } catch (e) {}
+
+  /* ---------- 数据 ---------- */
+  var logs = [
+    { t: "11-07 09:18", who: "叶俊城", item: "无水乙醇", qty: "200 mL", use: "样品前处理", verify: "RFID + AI", st: "out" },
+    { t: "11-07 09:02", who: "何言", item: "盐酸 (1mol/L)", qty: "50 mL", use: "滴定实验", verify: "RFID + AI", st: "ok" },
+    { t: "11-07 08:41", who: "廖亚华", item: "氢氧化钠", qty: "30 g", use: "配制缓冲液", verify: "RFID + AI", st: "ok" },
+    { t: "11-06 21:58", who: "未授权", item: "丙酮", qty: "150 mL", use: "—", verify: "AI 拦截", st: "bad" },
+    { t: "11-06 18:20", who: "何言", item: "甲醇", qty: "100 mL", use: "萃取实验", verify: "RFID", st: "ok" },
+    { t: "11-06 16:33", who: "叶俊城", item: "三氯甲烷", qty: "80 mL", use: "有机合成", verify: "RFID + AI", st: "ok" },
+    { t: "11-06 15:12", who: "廖亚华", item: "双氧水 30%", qty: "60 mL", use: "氧化反应", verify: "RFID + AI", st: "ok" },
+    { t: "11-06 14:05", who: "王老师", item: "硝酸", qty: "40 mL", use: "消解样品", verify: "RFID + AI", st: "ok" },
+    { t: "11-06 11:40", who: "何言", item: "乙酸乙酯", qty: "120 mL", use: "萃取分离", verify: "RFID + AI", st: "ok" },
+    { t: "11-06 10:22", who: "叶俊城", item: "高锰酸钾", qty: "15 g", use: "氧化滴定", verify: "RFID + AI", st: "ok" },
+    { t: "11-05 17:18", who: "廖亚华", item: "乙醚", qty: "100 mL", use: "提取实验", verify: "RFID + AI", st: "ok" },
+    { t: "11-05 15:46", who: "何言", item: "硫酸", qty: "60 mL", use: "酸化处理", verify: "RFID + AI", st: "ok" },
+    { t: "11-05 09:31", who: "张同学", item: "丙酮", qty: "100 mL", use: "清洗器皿", verify: "RFID + AI", st: "ok" },
+    { t: "11-04 20:09", who: "未授权", item: "甲醇", qty: "—", use: "—", verify: "AI 拦截", st: "bad" }
+  ];
+
+  var alerts = [
+    { lv: "high", tag: "高危", t: "22:14 未授权取用（3 号柜格）", d: "人脸未授权 + 试剂瓶离位，声光警告已触发，柜门已自动锁定，等待管理员现场复位。", done: false },
+    { lv: "mid", tag: "中危", t: "14:32 试剂超期未归还", d: "丙酮 已借出 26 小时（规定上限 12 小时），已通知借用人 叶俊城。", done: false },
+    { lv: "low", tag: "低危", t: "09:05 VOC 浓度轻度升高", d: "峰值 0.35 ppm，持续 40 秒后回落，通风联动已启动一次。", done: true },
+    { lv: "mid", tag: "中危", t: "昨日 18:20 双人核验缺失", d: "剧毒品取用未完成第二人核验，系统已记录并推送导师。", done: true }
+  ];
+
+  var cells = [
+    { no: "A1", nm: "无水乙醇", sp: "500 mL/瓶", now: 850, max: 1000, unit: "mL" },
+    { no: "A2", nm: "丙酮", sp: "500 mL/瓶", now: 300, max: 500, unit: "mL" },
+    { no: "A3", nm: "盐酸 1mol/L", sp: "500 mL/瓶", now: 480, max: 500, unit: "mL" },
+    { no: "A4", nm: "硝酸", sp: "500 mL/瓶", now: 60, max: 500, unit: "mL" },
+    { no: "B1", nm: "硫酸", sp: "1000 mL/瓶", now: 900, max: 1000, unit: "mL" },
+    { no: "B2", nm: "氢氧化钠", sp: "1000 g/瓶", now: 700, max: 1000, unit: "g" },
+    { no: "B3", nm: "甲醇", sp: "1000 mL/瓶", now: 800, max: 1000, unit: "mL" },
+    { no: "B4", nm: "乙醚", sp: "500 mL/瓶", now: 120, max: 500, unit: "mL" },
+    { no: "C1", nm: "高锰酸钾", sp: "250 g/瓶", now: 200, max: 250, unit: "g" },
+    { no: "C2", nm: "双氧水 30%", sp: "500 mL/瓶", now: 400, max: 500, unit: "mL" },
+    { no: "C3", nm: "三氯甲烷", sp: "500 mL/瓶", now: 90, max: 500, unit: "mL" },
+    { no: "C4", nm: "乙酸乙酯", sp: "500 mL/瓶", now: 0, max: 500, unit: "mL" }
+  ];
+
+  var stTag = {
+    ok: '<span class="tag ok">已归还</span>',
+    out: '<span class="tag out">未归还</span>',
+    bad: '<span class="tag bad">违规拦截</span>'
+  };
+
+  /* ---------- 渲染 ---------- */
+  function renderRecent() {
+    var body = document.getElementById("recentBody");
+    body.innerHTML = logs.slice(0, 5).map(function (r) {
+      return "<tr><td>" + r.t + "</td><td>" + r.who + "</td><td>" + r.item + "</td><td>" + r.qty +
+        "</td><td>" + r.use + "</td><td><span class='tag ai'>" + r.verify + "</span></td><td>" + stTag[r.st] + "</td></tr>";
+    }).join("");
+  }
+
+  function renderLedger() {
+    var kw = document.getElementById("searchInput").value.trim().toLowerCase();
+    var fs = document.getElementById("filterStatus").value;
+    var rows = logs.filter(function (r) {
+      var hit = !kw || (r.item + r.who + r.use).toLowerCase().indexOf(kw) >= 0;
+      var hit2 = fs === "all" || r.st === fs;
+      return hit && hit2;
+    });
+    document.getElementById("ledgerBody").innerHTML = rows.map(function (r) {
+      return "<tr><td>" + r.t + "</td><td>" + r.who + "</td><td>" + r.item + "</td><td>" + r.qty +
+        "</td><td>" + r.use + "</td><td><span class='tag ai'>" + r.verify + "</span></td><td>" + stTag[r.st] + "</td></tr>";
+    }).join("") || "<tr><td colspan='7' style='text-align:center;color:#888780;padding:26px'>没有匹配的记录</td></tr>";
+    document.getElementById("ledgerCount").textContent = "筛选出 " + rows.length + " 条";
+  }
+
+  function alertHtml(a, idx, btn) {
+    var cls = a.done ? "" : a.lv;
+    var act = btn ? (a.done
+      ? '<div class="act done">已处理</div>'
+      : '<div class="act" data-idx="' + idx + '">标记已处理</div>') : "";
+    return '<div class="alert ' + cls + '"><div class="lv">' + a.tag + '</div><div class="body"><div class="t">' +
+      a.t + '</div><div class="d">' + a.d + '</div></div>' + act + '</div>';
+  }
+
+  function renderAlerts() {
+    document.getElementById("alertMini").innerHTML = alerts.slice(0, 2).map(function (a, i) {
+      return alertHtml(a, i, false);
+    }).join("");
+    var full = document.getElementById("alertFull");
+    full.innerHTML = alerts.map(function (a, i) { return alertHtml(a, i, true); }).join("");
+    Array.prototype.forEach.call(full.querySelectorAll(".act[data-idx]"), function (el) {
+      el.addEventListener("click", function () {
+        var i = parseInt(el.getAttribute("data-idx"), 10);
+        alerts[i].done = true;
+        renderAlerts();
+        updateAlertKpi();
+      });
+    });
+  }
+
+  function renderCells() {
+    document.getElementById("cellsGrid").innerHTML = cells.map(function (c) {
+      var pct = Math.round(c.now / c.max * 100);
+      var cls = pct === 0 ? "empty" : (pct < 30 ? "low" : "");
+      var flag = pct === 0 ? '<div class="flag r">已用空 · 待补充</div>'
+        : (pct < 30 ? '<div class="flag a">余量偏低 · 建议采购</div>'
+          : '<div class="flag g">状态正常</div>');
+      return '<div class="cell ' + cls + '"><div class="no">' + c.no + '</div><div class="nm">' + c.nm +
+        '</div><div class="sp">' + c.sp + '</div><div class="bar"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="qty"><span>余 ' + c.now + ' ' + c.unit + '</span><span>' + pct + '%</span></div>' + flag + '</div>';
+    }).join("");
+  }
+
+  function updateAlertKpi() {
+    var n = alerts.filter(function (a) { return !a.done; }).length;
+    document.getElementById("kpiAlert").innerHTML = n + "<small>条</small>";
+    document.getElementById("navAlertBadge").textContent = n;
+    document.getElementById("navAlertBadge").style.display = n ? "inline-block" : "none";
+  }
+
+  /* ---------- 实时数据 ---------- */
+  var temp = 22.4, hum = 45, voc = 0.12;
+  var hist = [];
+  for (var i = 0; i < 40; i++) { hist.push(0.12 + Math.random() * 0.04 - 0.02); }
+
+  function drawSpark() {
+    var w = 600, h = 58, max = Math.max.apply(null, hist) + 0.02, min = Math.min.apply(null, hist) - 0.02;
+    var pts = hist.map(function (v, i) {
+      var x = i / (hist.length - 1) * w;
+      var y = h - (v - min) / (max - min) * (h - 8) - 4;
+      return x.toFixed(1) + "," + y.toFixed(1);
+    });
+    document.getElementById("sparkLine").setAttribute("points", pts.join(" "));
+    document.getElementById("sparkLine").setAttribute("stroke", voc > 0.3 ? "#D85A30" : "#3B6D11");
+    document.getElementById("sparkArea").setAttribute("points", "0," + h + " " + pts.join(" ") + " " + w + "," + h);
+  }
+
+  function tickEnv() {
+    temp += (Math.random() - 0.5) * 0.18;
+    hum += (Math.random() - 0.5) * 0.7;
+    voc += (Math.random() - 0.5) * 0.02;
+    temp = Math.min(26.5, Math.max(19.5, temp));
+    hum = Math.min(58, Math.max(35, hum));
+    voc = Math.min(0.45, Math.max(0.04, voc));
+    document.getElementById("envTemp").innerHTML = temp.toFixed(1) + "<em>℃</em>";
+    document.getElementById("envHum").innerHTML = hum.toFixed(0) + "<em>%RH</em>";
+    document.getElementById("envVoc").innerHTML = voc.toFixed(2) + "<em>ppm</em>";
+    hist.push(voc);
+    if (hist.length > 40) hist.shift();
+    drawSpark();
+    var note = document.getElementById("envNote");
+    if (voc > 0.3) {
+      note.textContent = "VOC 超过预警阈值 0.30 ppm · 通风联动已启动";
+      note.style.background = "rgba(216,90,48,0.10)";
+      note.style.color = "#D85A30";
+    } else {
+      note.textContent = "温湿度与 VOC 均在安全阈值内 · 未触发通风联动";
+      note.style.background = "rgba(59,109,17,0.10)";
+      note.style.color = "#3B6D11";
+    }
+  }
+
+  /* ---------- 导航与时钟 ---------- */
+  var titles = { overview: "总览", ledger: "电子台账", alerts: "告警中心", cells: "柜格库存", device: "设备状态" };
+  Array.prototype.forEach.call(document.querySelectorAll("nav a"), function (a) {
+    a.addEventListener("click", function () {
+      var v = a.getAttribute("data-view");
+      Array.prototype.forEach.call(document.querySelectorAll("nav a"), function (x) { x.classList.remove("active"); });
+      a.classList.add("active");
+      Array.prototype.forEach.call(document.querySelectorAll(".view"), function (s) { s.classList.remove("active"); });
+      document.getElementById("view-" + v).classList.add("active");
+      document.getElementById("viewTitle").textContent = titles[v];
+    });
+  });
+
+  function startClocks() {
+    var clock = document.getElementById("clock");
+    function pad(n) { return n < 10 ? "0" + n : "" + n; }
+    function tick() {
+      var d = new Date();
+      clock.textContent = pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " +
+        pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+      var f = document.getElementById("deviceFrames");
+      if (f) f.textContent = (31204 + Math.floor(Math.random() * 40)).toLocaleString();
+    }
+    tick();
+    setInterval(tick, 1000);
+    setInterval(tickEnv, 2000);
+  }
+
+  document.getElementById("searchInput").addEventListener("input", renderLedger);
+  document.getElementById("filterStatus").addEventListener("change", renderLedger);
+
+  renderRecent();
+  renderLedger();
+  renderAlerts();
+  renderCells();
+  updateAlertKpi();
+  drawSpark();
+  pwdEl.focus();
+</script>
+</body>
+</html>
